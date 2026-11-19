@@ -1,0 +1,8 @@
+# library backups and generated output (contain library data and track paths)
+spike/backups/
+spike/out/
+engine/out/
+engine/.cache/
+__pycache__/
+.DS_Store
+.claude/settings.local.json

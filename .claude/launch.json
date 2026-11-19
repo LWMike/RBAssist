@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "rbassist", "runtimeExecutable": "pnpm", "runtimeArgs": ["--dir", "app", "tauri", "dev"], "port": 1420 }
+  ]
+}
