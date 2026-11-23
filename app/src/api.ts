@@ -33,7 +33,12 @@ export type Written = { grid?: number; cues?: string; at: string };
 export type State = {
   decisions?: Record<string, Decision>; cueDecisions?: Record<string, CueDecision>; crateXml?: string; selected?: string[];
   written?: Record<string, Written>;
+  crateRoot?: string; cratePicked?: string[];
 };
+export type CrateTrack = { id: string; title: string; artist: string; path: string; state: "found" | "missing" | "online-only"; in_rekordbox: boolean; comment: string; bpm: number };
+export type CratePlaylist = { name: string; folder: string; count: number; found: number; missing: number; online_only: number; in_rekordbox: number; tracks: CrateTrack[] };
+export type CrateScan = { crate_root: string; root: string; remapped: boolean; rekordbox_read: boolean; tracks: number; playlists: CratePlaylist[] };
+export type CrateBuild = { out: string; playlists: string[]; tracks: number; left_out: { title: string; artist: string; path: string; playlist: string }[]; online_only: number };
 export type PlanEntry = { content_id: string; grid: boolean; cues: { grid: "rekordbox" | "proposed"; replace: boolean } | null };
 export type CheckedItem = {
   content_id: string; title: string; artist: string; ok: boolean; skip: string | null;
@@ -78,6 +83,15 @@ export const api = {
   writeStatus: (): Promise<WriteStatus> => (inTauri ? invoke("write_status") : Promise.resolve({ rekordbox_running: false, last: null })),
   writeUndo: (force: boolean): Promise<{ undone: string } | Refusal> =>
     inTauri ? invoke("write_undo", { force }) : Promise.resolve({ undone: "/dev/backups/sample" }),
+  crateScan: (crateXml: string, root: string): Promise<CrateScan> =>
+    inTauri ? invoke("crate_scan", { crateXml, root }) : dev("crate-scan.json"),
+  crateBuild: (crateXml: string, root: string, playlists: string[]): Promise<CrateBuild> =>
+    inTauri ? invoke("crate_build", { crateXml, root, playlists })
+      : Promise.resolve({ out: "/dev/crate-import.xml", playlists, tracks: 9, left_out: [{ title: "Sample missing track", artist: "Someone", path: "/missing.flac", playlist: playlists[0] }], online_only: 0 }),
+  crateDownload: (crateXml: string, root: string, playlists: string[]): Promise<{ requested: number; still_online_only: number; failed: { path: string; error: string }[] }> =>
+    inTauri ? invoke("crate_download", { crateXml, root, playlists }) : Promise.resolve({ requested: 1, still_online_only: 0, failed: [] }),
+  onDownload: (cb: (p: Progress) => void): Promise<() => void> =>
+    inTauri ? listen<Progress>("download-progress", (e) => cb(e.payload)) : Promise.resolve(() => {}),
   loadState: async (): Promise<State> =>
     inTauri ? invoke("load_state") : JSON.parse(localStorage.getItem("rbassist-state") ?? "{}"),
   saveState: async (state: State): Promise<void> => {

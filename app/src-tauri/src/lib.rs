@@ -191,6 +191,80 @@ async fn write_undo(app: AppHandle, force: bool) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || writeback(&app, "undo", None, force)).await.map_err(|e| e.to_string())?
 }
 
+/// Run a script with arguments; its last stdout line is the JSON answer, and
+/// any earlier JSON lines are progress, relayed as `event`.
+fn run_json(app: &AppHandle, script: &str, args: &[String], event: Option<&str>) -> Result<Value, String> {
+    let mut c = script_command(script)?;
+    c.args(args);
+    let mut child = c.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(spawn_error)?;
+    let mut last = String::new();
+    if let Some(stdout) = child.stdout.take() {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if !last.is_empty() {
+                if let (Some(ev), Ok(v)) = (event, serde_json::from_str::<Value>(&last)) {
+                    let _ = app.emit(ev, v);
+                }
+            }
+            last = line;
+        }
+    }
+    let mut err = String::new();
+    if let Some(mut e) = child.stderr.take() {
+        let _ = e.read_to_string(&mut err);
+    }
+    if !child.wait().map_err(|e| e.to_string())?.success() {
+        return Err(err.trim().lines().last().unwrap_or("the engine failed").to_string());
+    }
+    serde_json::from_str(&last).map_err(|e| format!("Unreadable answer from {script}: {e}"))
+}
+
+fn crate_args(action: &str, crate_xml: &str, root: &Option<String>, playlists: &[String]) -> Vec<String> {
+    let mut a = vec![action.to_string(), "--crate-xml".into(), crate_xml.trim().to_string()];
+    if let Some(r) = root.as_ref().filter(|r| !r.trim().is_empty()) {
+        a.push("--root".into());
+        a.push(r.trim().to_string());
+    }
+    for p in playlists {
+        a.push("--playlist".into());
+        a.push(p.clone());
+    }
+    a
+}
+
+/// Crate's playlists, each track remapped to this Mac and checked.
+#[tauri::command]
+async fn crate_scan(app: AppHandle, crate_xml: String, root: Option<String>) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || run_json(&app, "intake.py", &crate_args("scan", &crate_xml, &root, &[]), None))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// The Rekordbox XML for the chosen playlists, written to the app data folder.
+#[tauri::command]
+async fn crate_build(app: AppHandle, crate_xml: String, root: Option<String>, playlists: Vec<String>) -> Result<Value, String> {
+    let out = data_dir(&app)?.join("crate-import.xml");
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut a = crate_args("build", &crate_xml, &root, &playlists);
+        a.push("--out".into());
+        a.push(out.to_string_lossy().into_owned());
+        run_json(&app, "intake.py", &a, None)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Fetch the chosen playlists' online-only Dropbox files.
+#[tauri::command]
+async fn crate_download(app: AppHandle, crate_xml: String, root: Option<String>, playlists: Vec<String>) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut a = crate_args("download", &crate_xml, &root, &playlists);
+        a.push("--progress".into());
+        run_json(&app, "intake.py", &a, Some("download-progress"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Review decisions and settings, one JSON file.
 #[tauri::command]
 fn load_state(app: AppHandle) -> Result<Value, String> {
@@ -223,7 +297,10 @@ pub fn run() {
             write_check,
             write_apply,
             write_status,
-            write_undo
+            write_undo,
+            crate_scan,
+            crate_build,
+            crate_download
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

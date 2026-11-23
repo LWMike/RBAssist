@@ -250,6 +250,30 @@ Later:
     after a write before changing the same tracks' grids.
 - **M4 Intake + extras**: Crate intake and remap, preflight, mix lengths,
   grid lock.
+  - Crate intake built 2026-11-19: `engine/intake.py` (scan, build,
+    download) and the app's Crate view. Reads `crate.xml` (197 tracks, 23
+    playlists here), remaps each path to this Mac, and marks every track as
+    on this Mac, missing, or in Dropbox only (macOS dataless flag), and
+    whether Rekordbox already has it.
+  - Remap: "Crate's library folder on this Mac" replaces Crate's common
+    library folder (here `…/DJ Library/TUNES TO PREP`). Left empty, a path is
+    used as it is, or with the home folder swapped.
+  - The import file holds the chosen playlists under a "Crate" folder in
+    Crate's order, with no grid, tempo or key, so Rekordbox analyses them;
+    Crate's "Energy · Camelot" comment carries over. Missing files are left
+    out and listed. Download reads online-only files so Dropbox fetches them.
+  - Pass 1 stays on the XML route (proven in the spike); the app lists the
+    Rekordbox clicks. The native window's Crate view is untested (the engine
+    is tested from the command line, the view in the browser).
+  - Real import 2026-11-23, Rekordbox 7.2.18, "Rolling In The Dark" (4
+    tracks, 3 already in the collection): only the new track was added
+    (2048 → 2049, matched by path), the playlist kept Crate's order, and the
+    new track was analysed (grid 141.00) with Crate's comment. Existing
+    tracks kept their own comments. Import Playlist puts the playlist at the
+    top level, not in a "Crate" folder. Rekordbox showed a FLAC notice first.
+    Open: the new track got no key (KeyID 0) while all 1114 other analysed
+    tracks have one; check the key-analysis setting.
+  - To do: USB preflight, mix-in/out lengths, grid lock.
 - **M5 Packaging**: `.dmg`, auto-update.
 
 ## 7. Open questions

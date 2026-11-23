@@ -159,3 +159,15 @@ table.plan tr.skip td:not(.res) { opacity: 0.5; }
 .write .last button { margin-right: 8px; }
 button.danger { color: #fff; background: var(--danger); border-color: var(--danger); }
 .small { font-size: 12px; }
+
+/* crate view */
+.queue nav .navtitle { padding: 10px 14px 8px; font-size: 12px; color: var(--muted); }
+.queue li .pick { float: left; margin: 1px 8px 0 -4px; }
+.queue li .tags { clear: both; padding-left: 22px; }
+.crate .fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin: 12px 0 6px; }
+@media (max-width: 1150px) { .crate .fields { grid-template-columns: minmax(0, 1fr); } }
+.crate .field input { width: 100%; }
+.crate .field code, code.path { font-size: 11px; overflow-wrap: anywhere; user-select: text; }
+h3.sub { font-size: 14px; margin: 22px 0 6px; }
+.crate table.plan .res { width: 22%; }
+.steps { margin: 6px 0 0; padding-left: 20px; line-height: 1.7; }

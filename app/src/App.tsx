@@ -3,6 +3,7 @@ import { api, type Decision, type Playlist, type Progress, type State, type Trac
 import { Wave } from "./Wave";
 import { CueMode } from "./CueMode";
 import { WriteMode } from "./WriteMode";
+import { CrateMode } from "./CrateMode";
 import "./styles.css";
 
 const CHECK: Record<string, string> = {
@@ -74,7 +75,7 @@ export default function App() {
   const [tracks, setTracks] = useState<Track[] | null>(null);
   const [state, setState] = useState<State>({});
   const [loaded, setLoaded] = useState(false);
-  const [mode, setMode] = useState<"grid" | "cues" | "write">("grid");
+  const [mode, setMode] = useState<"crate" | "grid" | "cues" | "write">("grid");
   const [tab, setTab] = useState<Tab>("review");
   const [sel, setSel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -182,6 +183,9 @@ export default function App() {
       <header>
         <h1>RBAssist</h1>
         <div className="modes" role="tablist">
+          <button role="tab" aria-selected={mode === "crate"} className={mode === "crate" ? "on" : ""} onClick={() => { setMode("crate"); player.stop(); }}>
+            Crate
+          </button>
           <button role="tab" aria-selected={mode === "grid"} className={mode === "grid" ? "on" : ""} onClick={() => { setMode("grid"); }}>
             Grids {groups.review.length > 0 && <b>{groups.review.length}</b>}
           </button>
@@ -240,6 +244,7 @@ export default function App() {
         {error && <p className="error" role="alert">{error}</p>}
       </aside>
 
+      {mode === "crate" && <CrateMode state={state} update={update} active={mode === "crate"} loaded={loaded} />}
       {mode === "write" && <WriteMode tracks={tracks} state={state} update={update} gridDecision={gridDecision} active={mode === "write"} />}
       {mode === "cues" && <CueMode tracks={tracks} state={state} update={update} gridDecision={gridDecision} active={mode === "cues"} />}
       {mode === "grid" && <>
