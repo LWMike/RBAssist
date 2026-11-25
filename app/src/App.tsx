@@ -4,6 +4,7 @@ import { Wave } from "./Wave";
 import { CueMode } from "./CueMode";
 import { WriteMode } from "./WriteMode";
 import { CrateMode } from "./CrateMode";
+import { UsbMode } from "./UsbMode";
 import "./styles.css";
 
 const CHECK: Record<string, string> = {
@@ -75,7 +76,7 @@ export default function App() {
   const [tracks, setTracks] = useState<Track[] | null>(null);
   const [state, setState] = useState<State>({});
   const [loaded, setLoaded] = useState(false);
-  const [mode, setMode] = useState<"crate" | "grid" | "cues" | "write">("grid");
+  const [mode, setMode] = useState<"crate" | "grid" | "cues" | "write" | "usb">("grid");
   const [tab, setTab] = useState<Tab>("review");
   const [sel, setSel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -195,6 +196,9 @@ export default function App() {
           <button role="tab" aria-selected={mode === "write"} className={mode === "write" ? "on" : ""} onClick={() => { setMode("write"); player.stop(); }}>
             Write
           </button>
+          <button role="tab" aria-selected={mode === "usb"} className={mode === "usb" ? "on" : ""} onClick={() => { setMode("usb"); player.stop(); }}>
+            USB
+          </button>
         </div>
         <span className="spacer" />
         <span className="ro" title="Audits and reviews only read from Rekordbox. Changes are written from the Write view, with a backup first.">
@@ -246,6 +250,7 @@ export default function App() {
 
       {mode === "crate" && <CrateMode state={state} update={update} active={mode === "crate"} loaded={loaded} />}
       {mode === "write" && <WriteMode tracks={tracks} state={state} update={update} gridDecision={gridDecision} active={mode === "write"} />}
+      {mode === "usb" && <UsbMode chosen={state.selected ?? []} playlists={playlists} tracks={tracks} state={state} update={update} gridDecision={gridDecision} active={mode === "usb"} />}
       {mode === "cues" && <CueMode tracks={tracks} state={state} update={update} gridDecision={gridDecision} active={mode === "cues"} />}
       {mode === "grid" && <>
       <section className="queue">

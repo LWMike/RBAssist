@@ -239,6 +239,32 @@ async fn crate_scan(app: AppHandle, crate_xml: String, root: Option<String>) -> 
         .map_err(|e| e.to_string())?
 }
 
+/// USB preflight of Rekordbox playlists (engine/preflight.py check).
+#[tauri::command]
+async fn preflight_check(app: AppHandle, playlists: Vec<String>, flac_ok: bool) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut a = vec!["check".to_string()];
+        for p in playlists {
+            a.push("--playlist".into());
+            a.push(p);
+        }
+        if flac_ok {
+            a.push("--flac-ok".into());
+        }
+        run_json(&app, "preflight.py", &a, None)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Mounted USB sticks with filesystem and free space.
+#[tauri::command]
+async fn preflight_usb(app: AppHandle) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || run_json(&app, "preflight.py", &["usb".to_string()], None))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// The Rekordbox XML for the chosen playlists, written to the app data folder.
 #[tauri::command]
 async fn crate_build(app: AppHandle, crate_xml: String, root: Option<String>, playlists: Vec<String>) -> Result<Value, String> {
@@ -300,7 +326,9 @@ pub fn run() {
             write_undo,
             crate_scan,
             crate_build,
-            crate_download
+            crate_download,
+            preflight_check,
+            preflight_usb
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

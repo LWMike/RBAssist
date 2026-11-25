@@ -275,7 +275,37 @@ Later:
     (`enableKeyAnalysis` 0 in `rekordbox3.settings`), so auto analysis on
     import finds tempo and grid only. The scan now reports that setting and
     auto analysis, and the Crate view warns before importing.
-  - To do: USB preflight, mix-in/out lengths, grid lock.
+  - USB preflight built 2026-11-25: `engine/preflight.py` (check, usb) and
+    the app's USB view, over the playlists ticked in the sidebar. Read-only,
+    from a copy of master.db. Per track: file present (not Dropbox-only, not
+    streaming), analysed with a PQTZ grid, a key, format (FLAC flagged
+    unless "My players play FLAC" is ticked; >48 kHz and >24-bit flagged),
+    cues within 8 hot and 10 memory, and prepped (any cue; a memory cue for
+    the load point). The view adds the audit's view of the grid (flagged and
+    not reviewed, or accepted and not written). Per stick: filesystem
+    (FAT32 ok; exFAT and HFS+ newer players only; APFS and NTFS no), free
+    space against the playlists' total size, and whether it has an export.
+    Tested on three playlists (58 tracks, under 3 s).
+  - Stick test 2026-11-25 on the user's gig stick (128 GB, HFS+ on MBR,
+    CDJ-3000 firmware file on it). The stick check read it right. Fixed:
+    Rekordbox's folder on Mac-formatted sticks is `.PIONEER`, not `PIONEER`.
+    The check now also reads the stick's OneLibrary (`exportLibrary.db`,
+    from a temp copy, via `pyrekordbox.onelibrary`): tracks, playlists, how
+    many came from another Rekordbox library (`masterDbId` vs this library's
+    `DBID`), and duplicates (same title, artist and length: 479 of 1,727).
+  - Export proven (M0 item 2, Mac side): ADSR and Run, with RBAssist-written
+    grids and cues, exported with Rekordbox 7.2.18 (track list › Export
+    Tracks › the stick). On the stick the grid is identical (707 and 682
+    beats, same times) and every cue matches the library: 8 hot (slots, loop
+    ends, names) and 9 or 7 memory cues with names, in the `.EXT` PCO2 tags.
+    The legacy `.DAT` PCOB tag holds hot cues A–C only, as Rekordbox always
+    writes it for old players. OneLibrary's own cue table stays empty; cues
+    live in the ANLZ files. Rekordbox also writes `export.pdb`.
+  - Learned: a stick exported from another library gets a second copy of a
+    track it already has ("Name-2.flac"), not an update. The stick already
+    had copies from three libraries. The USB view now warns about this.
+  - Still unproven: CDJ playback of the exported cues and grids.
+  - To do: mix-in/out lengths, grid lock.
 - **M5 Packaging**: `.dmg`, auto-update.
 
 ## 7. Open questions

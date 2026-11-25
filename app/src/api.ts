@@ -34,6 +34,7 @@ export type State = {
   decisions?: Record<string, Decision>; cueDecisions?: Record<string, CueDecision>; crateXml?: string; selected?: string[];
   written?: Record<string, Written>;
   crateRoot?: string; cratePicked?: string[];
+  flacOk?: boolean; usbMount?: string;
 };
 export type CrateTrack = { id: string; title: string; artist: string; path: string; state: "found" | "missing" | "online-only"; in_rekordbox: boolean; comment: string; bpm: number };
 export type CratePlaylist = { name: string; folder: string; count: number; found: number; missing: number; online_only: number; in_rekordbox: number; tracks: CrateTrack[] };
@@ -51,6 +52,15 @@ export type LastWrite = {
   tracks: { content_id: string; title: string; grid: boolean; hot: number; memory: number; removed: number }[];
 };
 export type WriteStatus = { rekordbox_running: boolean; last: LastWrite | null };
+export type PreflightIssue = { level: "error" | "warn" | "info"; code: string; text: string };
+export type PreflightTrack = {
+  content_id: string; title: string; artist: string; path: string; size: number; bpm: number; key: string;
+  hot: number; memory: number; beats: number | null; issues: PreflightIssue[]; duplicate: boolean;
+};
+export type PreflightPlaylist = { id: string; name: string; tracks: PreflightTrack[]; errors: number; warnings: number };
+export type Preflight = { playlists: PreflightPlaylist[]; tracks: number; size: number; flac_ok: boolean };
+export type UsbVolume = { name: string; mount: string; filesystem: string; verdict: "ok" | "warn" | "error"; note: string; free: number; total: number; exported: boolean;
+  library?: { tracks: number; playlists: number; from_this_mac: number | null; from_elsewhere: number | null; duplicates: number } | null };
 type Refusal = { refused: string };
 export type Progress = { done: number; total: number; title: string };
 
@@ -93,6 +103,9 @@ export const api = {
     inTauri ? invoke("crate_download", { crateXml, root, playlists }) : Promise.resolve({ requested: 1, still_online_only: 0, failed: [] }),
   onDownload: (cb: (p: Progress) => void): Promise<() => void> =>
     inTauri ? listen<Progress>("download-progress", (e) => cb(e.payload)) : Promise.resolve(() => {}),
+  preflight: (playlists: string[], flacOk: boolean): Promise<Preflight> =>
+    inTauri ? invoke("preflight_check", { playlists, flacOk }) : dev("preflight.json"),
+  usb: (): Promise<{ volumes: UsbVolume[] }> => (inTauri ? invoke("preflight_usb") : dev("preflight-usb.json")),
   loadState: async (): Promise<State> =>
     inTauri ? invoke("load_state") : JSON.parse(localStorage.getItem("rbassist-state") ?? "{}"),
   saveState: async (state: State): Promise<void> => {
