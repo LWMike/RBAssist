@@ -271,8 +271,10 @@ Later:
     new track was analysed (grid 141.00) with Crate's comment. Existing
     tracks kept their own comments. Import Playlist puts the playlist at the
     top level, not in a "Crate" folder. Rekordbox showed a FLAC notice first.
-    Open: the new track got no key (KeyID 0) while all 1114 other analysed
-    tracks have one; check the key-analysis setting.
+    The new track got no key: Rekordbox's key analysis is off here
+    (`enableKeyAnalysis` 0 in `rekordbox3.settings`), so auto analysis on
+    import finds tempo and grid only. The scan now reports that setting and
+    auto analysis, and the Crate view warns before importing.
   - To do: USB preflight, mix-in/out lengths, grid lock.
 - **M5 Packaging**: `.dmg`, auto-update.
 

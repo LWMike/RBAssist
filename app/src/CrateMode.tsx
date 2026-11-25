@@ -119,6 +119,15 @@ export function CrateMode({ state, update, active, loaded }: Props) {
             </label>
           </div>
           {scan && !scan.rekordbox_read && <p className="warn small">Could not read Rekordbox's collection, so tracks it already has are not marked.</p>}
+          {scan?.rekordbox_settings?.key_analysis === false && (
+            <p className="warn small">
+              Rekordbox's key analysis is off, so tracks it adds will have no key. Turn on Preferences › Analysis › Track
+              Analysis › <b>KEY</b> before importing, or re-analyse the new tracks with KEY ticked afterwards.
+            </p>
+          )}
+          {scan?.rekordbox_settings?.auto_analysis === false && (
+            <p className="warn small">Rekordbox's auto analysis is off: analyse the imported tracks yourself before auditing them.</p>
+          )}
 
           {current && (
             <>

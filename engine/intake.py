@@ -119,6 +119,22 @@ def rekordbox_paths(rb_dir: str = os.path.expanduser("~/Library/Pioneer/rekordbo
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def rekordbox_settings(path: str = os.path.expanduser(
+        "~/Library/Application Support/Pioneer/rekordbox6/rekordbox3.settings")) -> dict:
+    """The analysis settings that decide what Rekordbox fills in for imported
+    tracks. Values are None when the settings file cannot be read."""
+    import re
+    try:
+        text = open(path, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return dict(auto_analysis=None, key_analysis=None)
+
+    def flag(name):
+        m = re.search(r'<VALUE name="%s" val="([^"]*)"' % name, text)
+        return None if m is None else m.group(1) == "1"
+    return dict(auto_analysis=flag("AutoAnalysis"), key_analysis=flag("enableKeyAnalysis"))
+
+
 def scan(xml_path: str, root: str | None) -> dict:
     tracks, playlists = read_crate(xml_path)
     remap, src_root = remapper(tracks, root)
@@ -138,7 +154,7 @@ def scan(xml_path: str, root: str | None) -> dict:
                         online_only=sum(r["state"] == "online-only" for r in rows),
                         in_rekordbox=sum(r["in_rekordbox"] for r in rows), tracks=rows))
     return dict(crate_root=src_root, root=root or "", remapped=bool(root) or any(r["path"] != loc_to_path(tracks[r["id"]].get("Location") or "") for r in info.values()),
-                rekordbox_read=rb is not None, tracks=len(tracks), playlists=out)
+                rekordbox_read=rb is not None, rekordbox_settings=rekordbox_settings(), tracks=len(tracks), playlists=out)
 
 
 def chosen(xml_path: str, names: list[str]):

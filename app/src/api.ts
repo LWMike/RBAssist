@@ -37,7 +37,8 @@ export type State = {
 };
 export type CrateTrack = { id: string; title: string; artist: string; path: string; state: "found" | "missing" | "online-only"; in_rekordbox: boolean; comment: string; bpm: number };
 export type CratePlaylist = { name: string; folder: string; count: number; found: number; missing: number; online_only: number; in_rekordbox: number; tracks: CrateTrack[] };
-export type CrateScan = { crate_root: string; root: string; remapped: boolean; rekordbox_read: boolean; tracks: number; playlists: CratePlaylist[] };
+export type CrateScan = { crate_root: string; root: string; remapped: boolean; rekordbox_read: boolean;
+  rekordbox_settings?: { auto_analysis: boolean | null; key_analysis: boolean | null }; tracks: number; playlists: CratePlaylist[] };
 export type CrateBuild = { out: string; playlists: string[]; tracks: number; left_out: { title: string; artist: string; path: string; playlist: string }[]; online_only: number };
 export type PlanEntry = { content_id: string; grid: boolean; cues: { grid: "rekordbox" | "proposed"; replace: boolean } | null };
 export type CheckedItem = {
