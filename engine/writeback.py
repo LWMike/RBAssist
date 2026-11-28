@@ -12,7 +12,8 @@ usage:
 
 The plan says only which tracks to write and how:
   [{"content_id": "...", "grid": true|false,
-    "cues": null | {"grid": "rekordbox"|"proposed", "replace": true|false}}]
+    "cues": null | {"grid": "rekordbox"|"proposed", "replace": true|false},
+    "lengths": null | "rekordbox"|"proposed"}]
 Grid times and cue positions come from the audit file, never from the plan.
 
 Rules (SPEC 3, 4.4):
@@ -25,6 +26,8 @@ Rules (SPEC 3, 4.4):
 - Cues: DjmdCue rows. "Replace" removes the track's existing cues first.
   Otherwise existing hot cues keep their slots and only free slots are filled;
   memory cues already at the same place are not doubled.
+- Lengths: "In 32 · Out 64" (bars) in the track's comment. An earlier
+  "In N · Out M" is replaced; the rest of the comment is kept.
 
 Output is JSON on stdout.
 """
@@ -37,6 +40,7 @@ import json
 import logging
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -49,6 +53,13 @@ KIND = {"A": 1, "B": 2, "C": 3, "D": 5, "E": 6, "F": 7, "G": 8, "H": 9}  # DjmdC
 # Rekordbox hot cue colour table indices (ANLZ colour ids) closest to the app's colours.
 COLOR_INDEX = {"green": 22, "orange": 36, "blue": 1, "red": 42, "yellow": 33}
 SAME_PLACE_MS = 5
+LENGTHS_RE = re.compile(r"\s*(?:·\s*)?In \d+ · Out \d+")
+
+
+def with_lengths(comment: str | None, text: str) -> str:
+    """The comment with "In N · Out M" put in, replacing an earlier one and keeping the rest."""
+    rest = LENGTHS_RE.sub("", comment or "").strip(" ·")
+    return f"{rest} · {text}" if rest else text
 GRID_MATCH_MS = 2.0
 
 
@@ -116,7 +127,7 @@ def build(audit: list[dict], plan: list[dict], db, rb_dir: str) -> list[dict]:
         cid = str(p["content_id"])
         r = rows.get(cid)
         item = dict(content_id=cid, title=(r or {}).get("title", ""), artist=(r or {}).get("artist", ""), ok=True, skip=None,
-                    grid=None, cues=None)
+                    grid=None, cues=None, comment=None)
         out.append(item)
 
         def skip(why):
@@ -173,7 +184,17 @@ def build(audit: list[dict], plan: list[dict], db, rb_dir: str) -> list[dict]:
                                 kept_slots=kept_slots, on=which)
             if not hot and not memory:
                 item["cues"]["nothing"] = True
-        if not item["grid"] and (not item["cues"] or item["cues"].get("nothing")):
+        lw = p.get("lengths")
+        if lw:
+            if lw == "proposed" and not p.get("grid"):
+                skip("the lengths were measured on the grid correction, which is not being written")
+                continue
+            cs = (r.get("cues") or {}).get(lw)
+            if cs and cs.get("ok") and cs.get("comment"):
+                new = with_lengths(c.Commnt, cs["comment"])
+                if new != (c.Commnt or ""):
+                    item["comment"] = dict(old=c.Commnt or "", new=new, text=cs["comment"])
+        if not item["grid"] and (not item["cues"] or item["cues"].get("nothing")) and not item["comment"]:
             skip("nothing to write: every cue slot is already taken" if item["cues"] else "nothing to write")
     return out
 
@@ -232,7 +253,7 @@ def write(audit: list[dict], plan: list[dict], rb_dir: str, backups: str) -> dic
     manifest = dict(created=datetime.datetime.now().isoformat(timespec="seconds"), rb_dir=rb_dir, db_files=[n for n in DB_FILES if os.path.exists(os.path.join(bdir, n))],
                     anlz=files, tracks=[dict(content_id=it["content_id"], title=it["title"], grid=bool(it["grid"]),
                                              hot=len((it["cues"] or {}).get("hot", [])), memory=len((it["cues"] or {}).get("memory", [])),
-                                             removed=(it["cues"] or {}).get("remove", 0)) for it in todo],
+                                             removed=(it["cues"] or {}).get("remove", 0), comment=bool(it["comment"])) for it in todo],
                     state="started")
     mpath = os.path.join(bdir, "manifest.json")
     json.dump(manifest, open(mpath, "w"), indent=1)
@@ -273,6 +294,8 @@ def write(audit: list[dict], plan: list[dict], rb_dir: str, backups: str) -> dic
                     row = _cue_row(m, c, 0, mc["time"], None, mc["name"], 0, now)
                     row.ID = new_id()
                     db.add(row)
+            if it.get("comment"):
+                c.Commnt = it["comment"]["new"]
         db.commit()
     except Exception:
         try:

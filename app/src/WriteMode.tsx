@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, type CheckedItem, type Decision, type PlanEntry, type State, type Track, type WriteStatus, type Written } from "./api";
-import { cueDecisionFor, cueSigFor } from "./CueMode";
+import { cueDecisionFor, cueSetFor, cueSigFor } from "./CueMode";
 
 type Props = {
   tracks: Track[] | null; state: State; update: (p: Partial<State>) => void;
@@ -16,9 +16,17 @@ function buildPlan(tracks: Track[], state: State, gridDecision: Props["gridDecis
     const w = state.written?.[t.content_id];
     const grid = gd?.decision === "accepted" && !!t.proposal && w?.grid !== t.proposal.bpm;
     const cuesWanted = cd?.decision === "accepted" && w?.cues !== cd.sig;
-    // cues on the corrected grid go only together with that grid
-    if (cuesWanted && cd!.grid === "proposed" && !grid) continue;
-    if (grid || cuesWanted) plan.push({ content_id: t.content_id, grid, cues: cuesWanted ? { grid: cd!.grid, replace: cd!.replace } : null });
+    // the lengths come with accepted cues, from the same placement
+    const { set } = cueSetFor(t, gd);
+    const text = set?.ok ? set.comment : undefined;
+    const lengthsWanted = state.writeLengths !== false && cd?.decision === "accepted" && !!text && w?.lengths !== text;
+    // cues and lengths on the corrected grid go only together with that grid
+    if ((cuesWanted || lengthsWanted) && cd!.grid === "proposed" && !grid && w?.grid !== t.proposal?.bpm) continue;
+    if (grid || cuesWanted || lengthsWanted)
+      plan.push({
+        content_id: t.content_id, grid, cues: cuesWanted ? { grid: cd!.grid, replace: cd!.replace } : null,
+        lengths: lengthsWanted ? cd!.grid : null,
+      });
   }
   return plan;
 }
@@ -67,6 +75,7 @@ export function WriteMode({ tracks, state, update, gridDecision, active }: Props
           ...prev, at,
           ...(i.grid ? { grid: t.proposal!.bpm } : {}),
           ...(i.cues ? { cues: cueSigFor(t, gridDecision(t)) } : {}),
+          ...(i.comment ? { lengths: i.comment.text } : {}),
         };
       }
       update({ written });
@@ -105,9 +114,13 @@ export function WriteMode({ tracks, state, update, gridDecision, active }: Props
       <div className="pad">
         <h2>Write to Rekordbox</h2>
         <p className="muted">
-          Accepted grid corrections and cues go straight into Rekordbox's library. Rekordbox has to be closed; every write
+          Accepted grid corrections, cues and mix lengths go straight into Rekordbox's library. Rekordbox has to be closed; every write
           backs up the library first and can be undone.
         </p>
+        <label className="check">
+          <input type="checkbox" checked={state.writeLengths !== false} onChange={(e) => update({ writeLengths: e.target.checked })} />
+          Put the mix-in and mix-out lengths in the comment <span className="muted">(“In 32 · Out 64”, in bars; the rest of the comment is kept)</span>
+        </label>
 
         <div className={"rbstate " + (open ? "open" : "closed")} role="status">
           <span className="dot" />
@@ -126,7 +139,7 @@ export function WriteMode({ tracks, state, update, gridDecision, active }: Props
         {plan.length > 0 && (
           <table className="plan">
             <thead>
-              <tr><th>Track</th><th>Grid</th><th>Cues</th><th /></tr>
+              <tr><th>Track</th><th>Grid</th><th>Cues</th><th>Comment</th><th /></tr>
             </thead>
             <tbody>
               {(items ?? plan.map((p) => ({ content_id: p.content_id } as CheckedItem))).map((i) => {
@@ -145,6 +158,14 @@ export function WriteMode({ tracks, state, update, gridDecision, active }: Props
                           {i.cues.on === "proposed" && <div className="a">on the corrected grid</div>}
                           {i.cues.replace && i.cues.remove > 0 && <div className="a warn">replaces {i.cues.remove} existing</div>}
                           {i.cues.kept_slots.length > 0 && <div className="a">keeps existing {i.cues.kept_slots.join(", ")}</div>}
+                        </>
+                      ) : "—"}
+                    </td>
+                    <td>
+                      {i.comment ? (
+                        <>
+                          {i.comment.text}
+                          {i.comment.new !== i.comment.text && <div className="a" title={i.comment.new}>after “{i.comment.new.slice(0, -i.comment.text.length - 3)}”</div>}
                         </>
                       ) : "—"}
                     </td>

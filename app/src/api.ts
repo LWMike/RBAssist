@@ -22,30 +22,33 @@ export type HotCue = { slot: string; bar: number; time: number; name: string; co
 export type MemoryCue = { bar: number; time: number; name: string };
 export type Section = { kind: "intro" | "body" | "breakdown" | "outro"; start: number; end: number; t0: number; t1: number };
 export type CueSet =
-  | { ok: true; confidence: "normal" | "low"; hot: HotCue[]; memory: MemoryCue[]; sections: Section[]; notes: string[]; bars: number }
+  | { ok: true; confidence: "normal" | "low"; hot: HotCue[]; memory: MemoryCue[]; sections: Section[]; notes: string[]; bars: number;
+      lengths?: { in: number; out: number }; comment?: string }
   | { ok: false; reason: string };
 export type ExistingCue = { slot: string | null; time: number; end: number | null; name: string };
 export type Overview = { low: number[]; high: number[]; duration: number };
 export type CueDecision = { decision: "accepted" | "dismissed"; grid: "rekordbox" | "proposed"; replace: boolean; sig: string; at: string };
 export type Playlist = { id: string; name: string; folder: string; count: number; missing?: number };
 export type Decision = { decision: "accepted" | "dismissed"; bpm: number; first_beat_ms: number; at: string };
-export type Written = { grid?: number; cues?: string; at: string };
+export type Written = { grid?: number; cues?: string; lengths?: string; at: string };
 export type State = {
   decisions?: Record<string, Decision>; cueDecisions?: Record<string, CueDecision>; crateXml?: string; selected?: string[];
   written?: Record<string, Written>;
   crateRoot?: string; cratePicked?: string[];
-  flacOk?: boolean; usbMount?: string;
+  flacOk?: boolean; usbMount?: string; writeLengths?: boolean;
 };
 export type CrateTrack = { id: string; title: string; artist: string; path: string; state: "found" | "missing" | "online-only"; in_rekordbox: boolean; comment: string; bpm: number };
 export type CratePlaylist = { name: string; folder: string; count: number; found: number; missing: number; online_only: number; in_rekordbox: number; tracks: CrateTrack[] };
 export type CrateScan = { crate_root: string; root: string; remapped: boolean; rekordbox_read: boolean;
   rekordbox_settings?: { auto_analysis: boolean | null; key_analysis: boolean | null }; tracks: number; playlists: CratePlaylist[] };
 export type CrateBuild = { out: string; playlists: string[]; tracks: number; left_out: { title: string; artist: string; path: string; playlist: string }[]; online_only: number };
-export type PlanEntry = { content_id: string; grid: boolean; cues: { grid: "rekordbox" | "proposed"; replace: boolean } | null };
+export type PlanEntry = { content_id: string; grid: boolean; cues: { grid: "rekordbox" | "proposed"; replace: boolean } | null;
+  lengths?: "rekordbox" | "proposed" | null };
 export type CheckedItem = {
   content_id: string; title: string; artist: string; ok: boolean; skip: string | null;
   grid: { old_bpm: number; bpm: number; beats: number; old_beats: number; shift_ms?: number } | null;
   cues: { replace: boolean; remove: number; hot: HotCue[]; memory: MemoryCue[]; kept_slots: string[]; on: string; nothing?: boolean } | null;
+  comment?: { old: string; new: string; text: string } | null;
 };
 export type LastWrite = {
   dir: string; created: string; changed_since: boolean;
@@ -131,6 +134,10 @@ async function devCheck(plan: PlanEntry[]): Promise<{ rekordbox_running: boolean
         replace: p.cues.replace, remove: p.cues.replace ? (t?.existing_cues ?? []).length : 0, on: p.cues.grid,
         hot: set.hot.filter((h) => !taken.has(h.slot)), memory: set.memory, kept_slots: set.hot.filter((h) => taken.has(h.slot)).map((h) => h.slot),
       } : null,
+      comment: (() => {
+        const ls = p.lengths ? t?.cues?.[p.lengths] : null;
+        return ls && ls.ok && ls.comment ? { old: "Energy 5 · 3A", new: "Energy 5 · 3A · " + ls.comment, text: ls.comment } : null;
+      })(),
     };
   });
   return { rekordbox_running: false, items };

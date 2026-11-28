@@ -305,7 +305,24 @@ Later:
     track it already has ("Name-2.flac"), not an update. The stick already
     had copies from three libraries. The USB view now warns about this.
   - Still unproven: CDJ playback of the exported cues and grids.
-  - To do: mix-in/out lengths, grid lock.
+  - Mix lengths built 2026-11-26. `cues.py` adds `lengths` {in, out} and
+    `comment` ("In 24 · Out 32") to each cue set. In: bars from the first
+    kick to the first 4-bar phrase whose mids and highs come within 1.5 dB
+    of the 16 bars after the main drop (the body up to mix-out when there is
+    no breakdown), capped at the first breakdown. Out: Mix out (G) to the
+    last kick. The Cues view shows them. Write puts them in the comment
+    (`DjmdContent.Commnt`) when cues are accepted, replacing an earlier
+    "In N · Out M" and keeping the rest (Crate's "Energy 5 · 3A" stays);
+    a Write option turns it off. Covered by the same backup and undo.
+  - Tested on 31 four-on-the-floor tracks from two playlists: In 12–48,
+    Out 12–48 bars. Out isn't a multiple of 4 when the last kick falls
+    mid-phrase (17, 34). Bevel gives In 4: its mids and highs are flat from
+    the first kick. First version measured "full" after the last drop,
+    which is the outro on some tracks (Sirens In 4, Voice Of The Soul
+    In 152); fixed. Write tested on a copy of master.db: comments read back
+    right, and a second check finds nothing to write. Not yet checked by
+    ear or written to the real library.
+  - To do: grid lock.
 - **M5 Packaging**: `.dmg`, auto-update.
 
 ## 7. Open questions

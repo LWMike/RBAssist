@@ -234,7 +234,7 @@ function CueDetail({ t, gridDecision, decision, player, playFrom, decide }: {
 
       {set.ok && (
         <>
-          <p className="muted gridnote">{gridNote}{set.notes.length ? " " + set.notes.map((n) => n[0].toUpperCase() + n.slice(1)).join(". ") + "." : ""}</p>
+          <p className="muted gridnote">{gridNote}{set.lengths && <> Mix in over <b>{set.lengths.in}</b> bars, mix out over <b>{set.lengths.out}</b>.</>}{set.notes.length ? " " + set.notes.map((n) => n[0].toUpperCase() + n.slice(1)).join(". ") + "." : ""}</p>
           {t.overview && (
             <>
               <div className="wavehead">

@@ -179,6 +179,18 @@ def place_cues(x: np.ndarray, times: np.ndarray, numbers: np.ndarray) -> dict:
     cand = [k for k in range(mix_out - mix_out % 4, last_end - OUTRO_LOOP + 1, 4) if k >= mix_out] or [max(last_end - OUTRO_LOOP, first)]
     outro = min(cand, key=lambda k: (energy[k:k + OUTRO_LOOP].mean(), -k))
 
+    # mix-in: from the first kick until the track is at full strength, i.e. the
+    # first 4-bar phrase whose mids and highs reach the level of the 16 bars
+    # after the main drop (the body up to mix-out if there is no breakdown),
+    # or the first breakdown, whichever comes first. Mix-out: Mix out to the
+    # last kick. Both in bars, for the comment (SPEC 4.6).
+    in_end = min([a for a, _ in breaks] + [mix_out])
+    peak = (main[1], min(main[1] + 16, mix_out)) if main else (first, mix_out)
+    if peak[1] - peak[0] >= 4:
+        full = np.median(energy[peak[0]:peak[1]])
+        in_end = next((k for k in range(first + 4, in_end, 4) if np.median(energy[k:k + 4]) >= full - 1.5), in_end)
+    lengths = {"in": int(in_end - first), "out": int(last_end - mix_out)}
+
     def at(bar: int) -> float:
         return float(times[bars[min(bar, nb - 1)]])
 
@@ -239,7 +251,7 @@ def place_cues(x: np.ndarray, times: np.ndarray, numbers: np.ndarray) -> dict:
     if not main:
         notes.append("no breakdown found; C–F left empty")
     return dict(ok=True, confidence="low" if patchy else "normal", hot=hot[:MAX_HOT], memory=memory, sections=sections, notes=notes,
-                bars=nb, kick_bars=[int(v) for v in bar_kick])
+                bars=nb, lengths=lengths, comment=f"In {lengths['in']} · Out {lengths['out']}", kick_bars=[int(v) for v in bar_kick])
 
 
 def overview(x: np.ndarray, bins: int = 1400) -> dict:
